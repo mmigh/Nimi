@@ -1,23 +1,23 @@
 const fs = require('fs');
 const express = require('express');
-const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes } = require('discord.js');
+const mcUtil = require('minecraft-server-util');
 const config = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
 const reconnectDelay = config.reconnectDelayMs || 3000;
-const randomName = () => `minib${Math.floor(Math.random() * 9999)}`;
-const messages = [
-  "Vẫn đang AFK ", "Đừng kick tui nha ", "Tôi là người thật mà ", "Aternos ổn áp", "Lag nhẹ thôi "
-];
 
+// Web giữ sống bot
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get("/", (_, res) => res.send("✅ Bot is running"));
 app.listen(PORT, () => console.log(`[🌐] Web server running on port ${PORT}`));
 
-let bot = null;
-let clientBedrock = null;
+// Chat định kỳ
 let chatLoop;
 function startChat(sendFn) {
   if (chatLoop) clearInterval(chatLoop);
+  const messages = [
+    "Vẫn đang AFK ", "Đừng kick tui nha ",
+    "Tôi là người thật mà ", "Aternos ổn áp", "Lag nhẹ thôi "
+  ];
   chatLoop = setInterval(() => {
     const msg = messages[Math.floor(Math.random() * messages.length)];
     sendFn(msg);
@@ -25,15 +25,17 @@ function startChat(sendFn) {
   }, 180000);
 }
 
+// === JAVA BOT ===
 function startJavaBot() {
   const mineflayer = require('mineflayer');
+  let bot;
+
   function connect() {
-    const username = randomName();
-    console.log(`[🔄] Kết nối Java tới ${config.host}:${config.port || 25565} với tên ${username}`);
+    console.log(`[🔄] Kết nối Java tới ${config.host}:${config.port || 25565}`);
     bot = mineflayer.createBot({
       host: config.host,
       port: config.port || 25565,
-      username,
+      username: config.username,
       password: config.password || undefined,
       version: config.version
     });
@@ -57,86 +59,54 @@ function startJavaBot() {
   connect();
 }
 
+// === BEDROCK BOT ===
 function startBedrockBot() {
   const { createClient } = require('bedrock-protocol');
+
   function connect() {
-    const username = randomName();
-    console.log(`[🔄] Kết nối Bedrock tới ${config.host}:${config.port} với tên ${username}`);
-    clientBedrock = createClient({
-      host: config.host,
-      port: config.port || 48546,
-      username,
-      offline: true,
-      profilesFolder: './bedrock_profiles',
-      password: config.password
-    });
+    // Check xem server có online không trước khi kết nối
+    mcUtil.statusBedrock(config.host, config.port || 19132)
+      .then(() => {
+        const randomName = config.username + Math.floor(Math.random() * 10000);
+        console.log(`[🔄] Kết nối Bedrock tới ${config.host}:${config.port} với tên ${randomName}`);
+        const client = createClient({
+          host: config.host,
+          port: config.port || 48546,
+          username: randomName,
+          offline: true
+        });
 
-    clientBedrock.on('join', () => {
-      console.log('[✅] Đã vào server Bedrock.');
-      startChat(msg => clientBedrock.queue('chat', { message: msg }));
-    });
+        client.on('join', () => {
+          console.log('[✅] Đã vào server Bedrock.');
+          startChat(msg => {
+            client.queue('chat', { message: msg });
+          });
+        });
 
-    clientBedrock.on('disconnect', (reason) => {
-      console.warn('[⚠️] Bedrock bị kick:', reason);
-      setTimeout(connect, reconnectDelay);
-    });
+        client.on('disconnect', reason => {
+          console.warn('[⚠️] Bedrock bị kick:', reason);
+          setTimeout(connect, reconnectDelay);
+        });
 
-    clientBedrock.on('error', err => {
-      console.error('[❌] Bedrock lỗi:', err.message);
-      setTimeout(connect, reconnectDelay);
-    });
+        client.on('error', err => {
+          console.error('[❌] Bedrock lỗi:', err.message);
+          setTimeout(connect, reconnectDelay);
+        });
+      })
+      .catch(() => {
+        console.warn('[⏳] Server chưa mở, thử lại sau...');
+        setTimeout(connect, reconnectDelay);
+      });
   }
 
   connect();
 }
 
-// === Discord Bot ===
-const discordClient = new Client({ intents: [GatewayIntentBits.Guilds] });
-
-discordClient.once('ready', () => {
-  console.log(`[🤖] Discord bot sẵn sàng (${discordClient.user.tag})`);
-});
-
-discordClient.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
-  if (interaction.commandName === 'reconnect') {
-    await interaction.reply('♻️ Đang reconnect...');
-    if (config.platform === 'java' && bot) bot.quit();
-    else if (config.platform === 'bedrock' && clientBedrock) clientBedrock.close();
-    else await interaction.followUp('❌ Không tìm thấy bot để reconnect.');
-  }
-
-  if (interaction.commandName === 'check_online') {
-    if (config.platform === 'java' && bot && bot.players) {
-      const names = Object.keys(bot.players);
-      await interaction.reply(`👥 Online (${names.length}): ${names.join(', ')}`);
-    } else if (config.platform === 'bedrock' && clientBedrock) {
-      await interaction.reply('👤 Bedrock không hỗ trợ danh sách online trực tiếp.');
-    } else {
-      await interaction.reply('❌ Bot chưa kết nối hoặc không khả dụng.');
-    }
-  }
-});
-
-(async () => {
-  const commands = [
-    new SlashCommandBuilder().setName('reconnect').setDescription('🔄 Reconnect bot Minecraft'),
-    new SlashCommandBuilder().setName('check_online').setDescription('👀 Xem danh sách người chơi online')
-  ].map(cmd => cmd.toJSON());
-
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-  try {
-    console.log('[📡] Đăng ký lệnh slash...');
-    await rest.put(Routes.applicationCommands(config.discordClientId), { body: commands });
-    console.log('[✅] Slash command đã được đăng ký.');
-    await discordClient.login(process.env.DISCORD_TOKEN);
-  } catch (error) {
-    console.error('❌ Không thể đăng ký lệnh:', error);
-  }
-})();
-
-// === Khởi động bot Minecraft ban đầu ===
-if (config.platform === 'java') startJavaBot();
-else if (config.platform === 'bedrock') startBedrockBot();
-else console.error("❌ Cấu hình sai! Hãy đặt platform là 'java' hoặc 'bedrock'");
+// === BẮT ĐẦU ===
+if (config.platform === 'java') {
+  startJavaBot();
+} else if (config.platform === 'bedrock') {
+  startBedrockBot();
+} else {
+  console.error("❌ Cấu hình sai! Hãy đặt platform là 'java' hoặc 'bedrock'");
+      }

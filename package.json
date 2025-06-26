@@ -9,6 +9,7 @@
     "bedrock-protocol": "*",
     "express": "*",
     "mineflayer": "*",
-    "prismarine-nbt": "*"
+    "prismarine-nbt": "*",
+    "minecraft-server-util": "*"
   }
 }

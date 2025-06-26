@@ -31,11 +31,12 @@ function startBot() {
   console.log(`[🔄] Đang kết nối tới server ${config.host}...`);
 
   bot = mineflayer.createBot({
-    host: config.host,
-    username: config.username,
-    password: config.password || undefined,
-    version: config.version
-  });
+  host: config.host,
+  port: config.port || 25565,
+  username: config.username,
+  password: config.password || undefined,
+  version: config.version
+});
 
   bot.once('spawn', () => {
     console.log('[✅] Bot đã kết nối thành công.');

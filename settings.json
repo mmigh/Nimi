@@ -1,8 +1,9 @@
 {
+  "platform": "bedrock",   // "java" hoặc "bedrock"
   "host": "mmigh.aternos.me",
-  "port": 48546,
-  "username": "Minect",
-  "password": "",
-  "version": "1.21.90.4",
+  "port": 48536,
+  "username": "",  // Email Xbox nếu Bedrock
+  "password": "",           // Password Xbox nếu Bedrock
+  "version": "1.21.90.4",                  // Java version nếu platform = "java"
   "reconnectDelayMs": 3000
 }

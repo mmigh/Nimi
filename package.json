@@ -1,5 +1,5 @@
 {
-  "name": "aternos-afk-bot",
+  "name": "afk-bot-universal",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "mineflayer": "^4.6.1",
+    "bedrock-protocol": "^1.19.81",
     "express": "^4.18.2"
   }
 }

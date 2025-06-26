@@ -7,8 +7,6 @@
   },
   "dependencies": {
     "bedrock-protocol": "*",
-    "discord.js": "*",
-    "dotenv": "*",
     "express": "*",
     "mineflayer": "*",
     "prismarine-nbt": "*"

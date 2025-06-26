@@ -1,9 +1,7 @@
 {
-  "platform": "bedrock",   
+  "platform": "bedrock",
   "host": "mmigh.aternos.me",
   "port": 48546,
-  "username": "minex",  
-  "password": "",           
-  "version": "1.21.90.4",                  
-  "reconnectDelayMs": 3000
+  "reconnectDelayMs": 3000,
+  "discordClientId": "1375478001386520706"
 }

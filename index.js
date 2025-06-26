@@ -14,11 +14,11 @@ let chatLoop;
 function startChat(sendFn) {
   if (chatLoop) clearInterval(chatLoop);
   const messages = [
-    "Vẫn đang AFK 😴",
-    "Đừng kick tui nha 🥲",
-    "Tôi là người thật mà 😎",
-    "Aternos ổn áp!",
-    "Lag nhẹ thôi 😅"
+    "Vẫn đang AFK ",
+    "Đừng kick tui nha ",
+    "Tôi là người thật mà ",
+    "Aternos ổn áp",
+    "Lag nhẹ thôi "
   ];
   chatLoop = setInterval(() => {
     const msg = messages[Math.floor(Math.random() * messages.length)];
@@ -72,7 +72,7 @@ function startBedrockBot() {
       host: config.host,
       port: config.port || 19132,
       username: config.username,
-      offline: false,
+      offline: true,
       profilesFolder: './bedrock_profiles',
       password: config.password
     });

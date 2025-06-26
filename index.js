@@ -3,7 +3,7 @@ const express = require('express');
 const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes } = require('discord.js');
 const config = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
 const reconnectDelay = config.reconnectDelayMs || 3000;
-const randomName = () => `AFK_Bot_${Math.floor(Math.random() * 9999)}`;
+const randomName = () => `minib${Math.floor(Math.random() * 9999)}`;
 const messages = [
   "Vẫn đang AFK ", "Đừng kick tui nha ", "Tôi là người thật mà ", "Aternos ổn áp", "Lag nhẹ thôi "
 ];

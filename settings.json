@@ -2,5 +2,5 @@
   "platform": "bedrock",
   "host": "mmigh.aternos.me",
   "port": 48546,
-  "reconnectDelayMs": 3000,
+  "reconnectDelayMs": 3000
 }

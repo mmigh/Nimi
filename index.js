@@ -70,7 +70,7 @@ function startBedrockBot() {
     console.log(`[🔄] Kết nối Bedrock tới ${config.host}:${config.port}`);
     client = createClient({
       host: config.host,
-      port: config.port || 19132,
+      port: config.port || 48546,
       username: config.username,
       offline: true,
       profilesFolder: './bedrock_profiles',

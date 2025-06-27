@@ -64,7 +64,7 @@ function startBedrockBot() {
   const { createClient } = require('bedrock-protocol');
 
   function connect() {
-    // Check xem server có online không trước khi kết nối
+    console.log(`[⏳] Kiểm tra trạng thái server Bedrock...`);
     mcUtil.statusBedrock(config.host, config.port || 19132)
       .then(() => {
         const randomName = config.username + Math.floor(Math.random() * 10000);
@@ -94,7 +94,7 @@ function startBedrockBot() {
         });
       })
       .catch(() => {
-        console.warn('[⏳] Server chưa mở, thử lại sau...');
+        console.warn('[🔁] Server chưa mở. Thử lại sau vài giây...');
         setTimeout(connect, reconnectDelay);
       });
   }
@@ -109,4 +109,4 @@ if (config.platform === 'java') {
   startBedrockBot();
 } else {
   console.error("❌ Cấu hình sai! Hãy đặt platform là 'java' hoặc 'bedrock'");
-      }
+}

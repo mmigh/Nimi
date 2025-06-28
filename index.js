@@ -2,11 +2,11 @@ const fs = require('fs');
 const express = require('express');
 const mcUtil = require('minecraft-server-util');
 const config = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
-const reconnectDelay = config.reconnectDelayMs || 3000;
+const reconnectDelay = config.reconnectDelayMs || 7000;
 
-// Web giữ sống bot
+// Web giữ bot sống
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 app.get("/", (_, res) => res.send("✅ Bot is running"));
 app.listen(PORT, () => console.log(`[🌐] Web server running on port ${PORT}`));
 
@@ -15,71 +15,70 @@ let chatLoop;
 function startChat(sendFn) {
   if (chatLoop) clearInterval(chatLoop);
   const messages = [
-    "Vẫn đang AFK ", "Đừng kick tui nha ",
-    "Tôi là người thật mà ", "Aternos ổn áp", "Lag nhẹ thôi "
+    "Vẫn đang AFK ", "Đừng kick tui nha ", "Tôi là người thật mà ",
+    "Aternos ổn áp", "Lag nhẹ thôi ", "Ping ping"
   ];
   chatLoop = setInterval(() => {
     const msg = messages[Math.floor(Math.random() * messages.length)];
     sendFn(msg);
     console.log("[💬] Chat:", msg);
-  }, 180000);
+  }, 180000); // 3 phút
 }
 
 // === BEDROCK BOT ===
 function startBedrockBot() {
   const { createClient } = require('bedrock-protocol');
+  let client;
+  let watchdogLoop;
+
+  function setupWatchdog() {
+    let lastActivity = Date.now();
+    if (watchdogLoop) clearInterval(watchdogLoop);
+
+    client.on('packet', () => {
+      lastActivity = Date.now();
+    });
+
+    watchdogLoop = setInterval(() => {
+      if (Date.now() - lastActivity > 60000) {
+        console.warn('[🛑] Không thấy hoạt động gần đây, khởi động lại kết nối...');
+        try { client.disconnect(); } catch {}
+        clearInterval(watchdogLoop);
+        setTimeout(connect, reconnectDelay);
+      }
+    }, 30000);
+  }
 
   function connect() {
-    console.log('[⏳] Kiểm tra trạng thái server Bedrock...');
+    console.log("[⏳] Kiểm tra trạng thái server Bedrock...");
     mcUtil.statusBedrock(config.host, config.port || 19132)
       .then(() => {
         const randomName = config.username + Math.floor(Math.random() * 10000);
         console.log(`[🔄] Kết nối Bedrock tới ${config.host}:${config.port} với tên ${randomName}`);
-        const client = createClient({
+        client = createClient({
           host: config.host,
           port: config.port || 19132,
           username: randomName,
           offline: true
         });
 
-        let isConnected = false;
-        let lastChatTime = Date.now();
-
         client.on('join', () => {
           console.log('[✅] Đã vào server Bedrock.');
-          isConnected = true;
           startChat(msg => {
-            if (isConnected) {
-              client.queue('chat', { message: msg });
-              lastChatTime = Date.now();
-            }
+            client.queue('chat', { message: msg });
           });
+          setupWatchdog();
         });
 
-        // Watchdog: kiểm tra mỗi 30s
-        const watchdog = setInterval(() => {
-          if (!isConnected) return;
-          const now = Date.now();
-          if (now - lastChatTime > 60000) {
-            console.warn('[🛑] Không thấy hoạt động gần đây, khởi động lại kết nối...');
-            isConnected = false;
-            try { client.disconnect(); } catch {}
-            clearInterval(watchdog);
-            setTimeout(connect, reconnectDelay);
-          }
-        }, 30000);
-
         client.on('disconnect', reason => {
-          console.warn('[⚠️] Bedrock bị kick hoặc rớt:', reason);
-          isConnected = false;
-          clearInterval(watchdog);
+          console.warn('[⚠️] Bị kick hoặc mất kết nối:', reason);
+          clearInterval(watchdogLoop);
           setTimeout(connect, reconnectDelay);
         });
 
         client.on('error', err => {
-          console.error('[❌] Bedrock lỗi:', err.message);
-          isConnected = false;
-          clearInterval(watchdog);
+          console.error('[❌] Lỗi kết nối:', err.message);
+          clearInterval(watchdogLoop);
           setTimeout(connect, reconnectDelay);
         });
       })
@@ -92,45 +91,9 @@ function startBedrockBot() {
   connect();
 }
 
-// === JAVA BOT === (giữ nguyên nếu cần)
-function startJavaBot() {
-  const mineflayer = require('mineflayer');
-  let bot;
-
-  function connect() {
-    console.log(`[🔄] Kết nối Java tới ${config.host}:${config.port || 25565}`);
-    bot = mineflayer.createBot({
-      host: config.host,
-      port: config.port || 25565,
-      username: config.username,
-      password: config.password || undefined,
-      version: config.version
-    });
-
-    bot.once('spawn', () => {
-      console.log('[✅] Đã vào server Java.');
-      startChat(msg => bot.chat(msg));
-    });
-
-    bot.on('end', () => {
-      console.warn('[⚠️] Java Bot bị ngắt kết nối.');
-      setTimeout(connect, reconnectDelay);
-    });
-
-    bot.on('error', err => {
-      console.error('[❌] Java Bot lỗi:', err.message);
-      setTimeout(connect, reconnectDelay);
-    });
-  }
-
-  connect();
-}
-
-// === BẮT ĐẦU ===
-if (config.platform === 'java') {
-  startJavaBot();
-} else if (config.platform === 'bedrock') {
+// === KHỞI ĐỘNG ===
+if (config.platform === 'bedrock') {
   startBedrockBot();
 } else {
-  console.error("❌ Cấu hình sai! Hãy đặt platform là 'java' hoặc 'bedrock'");
-}
+  console.error("❌ Cấu hình sai! Hãy đặt platform là 'bedrock'");
+          }

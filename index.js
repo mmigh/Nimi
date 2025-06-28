@@ -1,18 +1,16 @@
 const fs = require('fs');
 const express = require('express');
 const mcUtil = require('minecraft-server-util');
-const { createClient } = require('bedrock-protocol');
-
 const config = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
 const reconnectDelay = config.reconnectDelayMs || 3000;
 
-// Tạo web giữ sống bot
+// Web giữ sống bot
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.get("/", (_, res) => res.send("✅ Bot is running"));
 app.listen(PORT, () => console.log(`[🌐] Web server running on port ${PORT}`));
 
-// === Chat định kỳ ===
+// Chat định kỳ
 let chatLoop;
 function startChat(sendFn) {
   if (chatLoop) clearInterval(chatLoop);
@@ -24,19 +22,19 @@ function startChat(sendFn) {
     const msg = messages[Math.floor(Math.random() * messages.length)];
     sendFn(msg);
     console.log("[💬] Chat:", msg);
-  }, 180000); // 3 phút
+  }, 180000);
 }
 
-// === Kết nối bot Bedrock ===
+// === BEDROCK BOT ===
 function startBedrockBot() {
+  const { createClient } = require('bedrock-protocol');
+
   function connect() {
     console.log('[⏳] Kiểm tra trạng thái server Bedrock...');
-
-    mcUtil.statusBedrock(config.host, config.port || 19132, { timeout: 5000 })
+    mcUtil.statusBedrock(config.host, config.port || 19132)
       .then(() => {
         const randomName = config.username + Math.floor(Math.random() * 10000);
         console.log(`[🔄] Kết nối Bedrock tới ${config.host}:${config.port} với tên ${randomName}`);
-
         const client = createClient({
           host: config.host,
           port: config.port || 19132,
@@ -44,37 +42,46 @@ function startBedrockBot() {
           offline: true
         });
 
-        let joined = false;
+        let isConnected = false;
+        let lastChatTime = Date.now();
 
         client.on('join', () => {
-          joined = true;
           console.log('[✅] Đã vào server Bedrock.');
+          isConnected = true;
           startChat(msg => {
-            client.queue('chat', { message: msg });
+            if (isConnected) {
+              client.queue('chat', { message: msg });
+              lastChatTime = Date.now();
+            }
           });
         });
 
-        // Nếu sau 30s chưa join, force reconnect
-        setTimeout(() => {
-          if (!joined) {
-            console.warn('[⌛] Không join được sau 30s, reconnect lại...');
-            try {
-              client.disconnect();
-            } catch (e) {}
+        // Watchdog: kiểm tra mỗi 30s
+        const watchdog = setInterval(() => {
+          if (!isConnected) return;
+          const now = Date.now();
+          if (now - lastChatTime > 60000) {
+            console.warn('[🛑] Không thấy hoạt động gần đây, khởi động lại kết nối...');
+            isConnected = false;
+            try { client.disconnect(); } catch {}
+            clearInterval(watchdog);
             setTimeout(connect, reconnectDelay);
           }
         }, 30000);
 
         client.on('disconnect', reason => {
-          console.warn('[⚠️] Bedrock bị disconnect:', reason);
+          console.warn('[⚠️] Bedrock bị kick hoặc rớt:', reason);
+          isConnected = false;
+          clearInterval(watchdog);
           setTimeout(connect, reconnectDelay);
         });
 
         client.on('error', err => {
           console.error('[❌] Bedrock lỗi:', err.message);
+          isConnected = false;
+          clearInterval(watchdog);
           setTimeout(connect, reconnectDelay);
         });
-
       })
       .catch(() => {
         console.warn('[🚫] Server chưa mở hoặc không phản hồi, thử lại sau...');
@@ -85,9 +92,45 @@ function startBedrockBot() {
   connect();
 }
 
-// === Bắt đầu bot ===
-if (config.platform === 'bedrock') {
+// === JAVA BOT === (giữ nguyên nếu cần)
+function startJavaBot() {
+  const mineflayer = require('mineflayer');
+  let bot;
+
+  function connect() {
+    console.log(`[🔄] Kết nối Java tới ${config.host}:${config.port || 25565}`);
+    bot = mineflayer.createBot({
+      host: config.host,
+      port: config.port || 25565,
+      username: config.username,
+      password: config.password || undefined,
+      version: config.version
+    });
+
+    bot.once('spawn', () => {
+      console.log('[✅] Đã vào server Java.');
+      startChat(msg => bot.chat(msg));
+    });
+
+    bot.on('end', () => {
+      console.warn('[⚠️] Java Bot bị ngắt kết nối.');
+      setTimeout(connect, reconnectDelay);
+    });
+
+    bot.on('error', err => {
+      console.error('[❌] Java Bot lỗi:', err.message);
+      setTimeout(connect, reconnectDelay);
+    });
+  }
+
+  connect();
+}
+
+// === BẮT ĐẦU ===
+if (config.platform === 'java') {
+  startJavaBot();
+} else if (config.platform === 'bedrock') {
   startBedrockBot();
 } else {
-  console.error("❌ Cấu hình sai! Vui lòng đặt platform là 'bedrock' trong settings.json");
+  console.error("❌ Cấu hình sai! Hãy đặt platform là 'java' hoặc 'bedrock'");
 }

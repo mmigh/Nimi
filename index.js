@@ -49,9 +49,6 @@ function startBedrockBot() {
 
         client.on('join', () => {
           console.log('[✅] Đã vào server Bedrock.');
-          startChat(msg => {
-            client.queue('chat', { message: msg });
-          });
           setupWatchdog();
         });
 
@@ -81,4 +78,4 @@ if (config.platform === 'bedrock') {
   startBedrockBot();
 } else {
   console.error("❌ Cấu hình sai! Hãy đặt platform là 'bedrock'");
-          }
+}

@@ -2,6 +2,6 @@
   "platform": "bedrock",
   "host": "mmigh.aternos.me",
   "port": 48546,
-  "reconnectDelayMs": 2000,
-  "username" : "mnimn"
+  "reconnectDelayMs": 3000,
+  "username" : "nguyenne"
 }

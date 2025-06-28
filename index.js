@@ -10,21 +10,6 @@ const PORT = process.env.PORT || 3000;
 app.get("/", (_, res) => res.send("✅ Bot is running"));
 app.listen(PORT, () => console.log(`[🌐] Web server running on port ${PORT}`));
 
-// Chat định kỳ
-let chatLoop;
-function startChat(sendFn) {
-  if (chatLoop) clearInterval(chatLoop);
-  const messages = [
-    "Vẫn đang AFK ", "Đừng kick tui nha ", "Tôi là người thật mà ",
-    "Aternos ổn áp", "Lag nhẹ thôi ", "Ping ping"
-  ];
-  chatLoop = setInterval(() => {
-    const msg = messages[Math.floor(Math.random() * messages.length)];
-    sendFn(msg);
-    console.log("[💬] Chat:", msg);
-  }, 180000); // 3 phút
-}
-
 // === BEDROCK BOT ===
 function startBedrockBot() {
   const { createClient } = require('bedrock-protocol');

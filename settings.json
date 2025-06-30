@@ -4,5 +4,6 @@
   "port": 48546,
   "username": "nguyenne",
   "reconnectDelayMs": 7000,
-  "statusCheckIntervalMs": 10000
+  "checkIntervalMs": 10000,
+  "minimalLog": true
 }

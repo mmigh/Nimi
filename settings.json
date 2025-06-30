@@ -2,6 +2,7 @@
   "platform": "bedrock",
   "host": "mmigh.aternos.me",
   "port": 48546,
-  "reconnectDelayMs": 3000,
-  "username" : "nguyenne"
+  "username": "nguyenne",
+  "reconnectDelayMs": 7000,
+  "statusCheckIntervalMs": 10000
 }

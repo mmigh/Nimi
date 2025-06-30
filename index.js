@@ -4,19 +4,27 @@ const mcUtil = require('minecraft-server-util');
 const config = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
 
 const reconnectDelay = config.reconnectDelayMs || 7000;
-const statusCheckInterval = config.statusCheckIntervalMs || 10000;
+const checkInterval = config.checkIntervalMs || 10000;
+const minimalLog = config.minimalLog || false;
 
+// Logging helper
+function log(type, ...args) {
+  if (minimalLog && type !== 'warn' && type !== 'error') return;
+  console[type](...args);
+}
+
+// Web giữ bot sống
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get("/", (_, res) => res.send("✅ Bot is running"));
-app.listen(PORT, () => console.log(`[🌐] Web server running on port ${PORT}`));
+app.listen(PORT, () => log('log', `[🌐] Web server running on port ${PORT}`));
 
 // === BEDROCK BOT ===
 function startBedrockBot() {
   const { createClient } = require('bedrock-protocol');
-  let client = null;
-  let watchdogLoop = null;
-  let statusInterval = null;
+  let client;
+  let watchdogLoop;
+  let isConnected = false;
 
   function setupWatchdog() {
     let lastActivity = Date.now();
@@ -28,61 +36,57 @@ function startBedrockBot() {
 
     watchdogLoop = setInterval(() => {
       if (Date.now() - lastActivity > 60000) {
-        console.warn('[🛑] Không thấy hoạt động gần đây, khởi động lại kết nối...');
+        log('warn', '[🛑] Không thấy hoạt động gần đây, khởi động lại kết nối...');
         try { client.disconnect(); } catch {}
         clearInterval(watchdogLoop);
-        connect();
+        isConnected = false;
       }
     }, 30000);
   }
 
   function connect() {
-    const randomName = config.username + Math.floor(Math.random() * 10000);
-    console.log(`[🔄] Kết nối Bedrock tới ${config.host}:${config.port} với tên ${randomName}`);
-    client = createClient({
-      host: config.host,
-      port: config.port || 19132,
-      username: randomName,
-      offline: true
-    });
+    if (isConnected) return;
 
-    client.on('join', () => {
-      console.log('[✅] Đã vào server Bedrock.');
-      setupWatchdog();
-    });
-
-    client.on('disconnect', reason => {
-      console.warn('[⚠️] Bị kick hoặc mất kết nối:', reason);
-      clearInterval(watchdogLoop);
-      setTimeout(startStatusChecker, reconnectDelay);
-    });
-
-    client.on('error', err => {
-      console.error('[❌] Lỗi kết nối:', err.message);
-      clearInterval(watchdogLoop);
-      setTimeout(startStatusChecker, reconnectDelay);
-    });
-  }
-
-  function startStatusChecker() {
-    if (statusInterval) clearInterval(statusInterval);
-    console.log(`[🔍] Bắt đầu kiểm tra trạng thái server mỗi ${statusCheckInterval / 1000}s...`);
-
-    statusInterval = setInterval(() => {
-      console.log("[⏳] Kiểm tra trạng thái server Bedrock...");
-      mcUtil.statusBedrock(config.host, config.port || 19132)
-        .then(() => {
-          console.log("[🟢] Server đã mở! Kết nối ngay...");
-          clearInterval(statusInterval);
-          connect();
-        })
-        .catch(() => {
-          console.log("[🚫] Server chưa mở hoặc không phản hồi, sẽ thử lại...");
+    log('log', '[⏳] Kiểm tra trạng thái server Bedrock...');
+    mcUtil.statusBedrock(config.host, config.port || 19132)
+      .then(() => {
+        log('log', '[🟢] Server đã mở! Kết nối ngay...');
+        const randomName = config.username + Math.floor(Math.random() * 10000);
+        log('log', `[🔄] Kết nối Bedrock tới ${config.host}:${config.port} với tên ${randomName}`);
+        client = createClient({
+          host: config.host,
+          port: config.port || 19132,
+          username: randomName,
+          offline: true
         });
-    }, statusCheckInterval);
+
+        isConnected = true;
+
+        client.on('join', () => {
+          log('log', '[✅] Đã vào server Bedrock.');
+          setupWatchdog();
+        });
+
+        client.on('disconnect', reason => {
+          log('warn', '[⚠️] Bị kick hoặc mất kết nối:', reason);
+          clearInterval(watchdogLoop);
+          isConnected = false;
+        });
+
+        client.on('error', err => {
+          log('error', '[❌] Lỗi kết nối:', err.message);
+          clearInterval(watchdogLoop);
+          isConnected = false;
+        });
+      })
+      .catch(() => {
+        log('warn', '[🚫] Server chưa mở hoặc không phản hồi, thử lại sau...');
+      });
   }
 
-  startStatusChecker();
+  log('log', `[🔍] Bắt đầu kiểm tra trạng thái server mỗi ${checkInterval / 1000}s...`);
+  setInterval(connect, checkInterval);
+  connect();
 }
 
 // === KHỞI ĐỘNG ===

@@ -1,6 +1,6 @@
 {
   "name": "minecraft-afk-bot",
-  "version": "1.0.0",
+  "version": "nana",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"

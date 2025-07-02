@@ -10,6 +10,7 @@
     "express": "*",
     "mineflayer": "*",
     "prismarine-nbt": "*",
-    "minecraft-server-util": "*"
+    "minecraft-server-util": "*",
+    "axios" : "*"
   }
 }

@@ -1,16 +1,31 @@
 const fs = require('fs');
 const express = require('express');
 const mcUtil = require('minecraft-server-util');
+const axios = require('axios');
 const config = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
 
 const reconnectDelay = config.reconnectDelayMs || 7000;
 const checkInterval = config.checkIntervalMs || 10000;
-const minimalLog = config.minimalLog || false;
+const minimalLog = config.minimalLog || true;
+const webhookUrl = process.env.URL;
 
 // Logging helper
 function log(type, ...args) {
-  if (minimalLog && type !== 'warn' && type !== 'error') return;
+  if (minimalLog && type === 'log') return;
   console[type](...args);
+  if (webhookUrl && (type === 'warn' || type === 'error')) {
+    axios.post(webhookUrl, {
+      content: `[\`${type.toUpperCase()}\`] ${args.join(' ')}`
+    }).catch(() => {});
+  }
+}
+
+function notifyDiscord(content) {
+  if (webhookUrl) {
+    axios.post(webhookUrl, {
+      content: `@everyone ${content}`
+    }).catch(() => {});
+  }
 }
 
 // Web giữ bot sống
@@ -37,6 +52,7 @@ function startBedrockBot() {
     watchdogLoop = setInterval(() => {
       if (Date.now() - lastActivity > 60000) {
         log('warn', '[🛑] Không thấy hoạt động gần đây, khởi động lại kết nối...');
+        notifyDiscord('⚠️ Bot mất kết nối quá 1 phút! Đang thử kết nối lại...');
         try { client.disconnect(); } catch {}
         clearInterval(watchdogLoop);
         isConnected = false;
@@ -64,11 +80,13 @@ function startBedrockBot() {
 
         client.on('join', () => {
           log('log', '[✅] Đã vào server Bedrock.');
+          notifyDiscord(`✅ Bot \`${randomName}\` đã vào server.`);
           setupWatchdog();
         });
 
         client.on('disconnect', reason => {
           log('warn', '[⚠️] Bị kick hoặc mất kết nối:', reason);
+          notifyDiscord(`⚠️ Bot bị kick hoặc mất kết nối: \`${reason}\``);
           clearInterval(watchdogLoop);
           isConnected = false;
         });

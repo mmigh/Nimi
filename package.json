@@ -11,6 +11,7 @@
     "mineflayer": "*",
     "prismarine-nbt": "*",
     "minecraft-server-util": "*",
-    "axios" : "*"
+    "axios" : "*",
+    "dotenv" : "*"
   }
 }

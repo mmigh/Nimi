@@ -2,6 +2,7 @@ const fs = require('fs');
 const express = require('express');
 const mcUtil = require('minecraft-server-util');
 const axios = require('axios');
+require('dotenv').config();
 const config = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
 
 const reconnectDelay = config.reconnectDelayMs || 7000;

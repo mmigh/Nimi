@@ -1,7 +1,7 @@
 {
   "platform": "bedrock",
-  "host": "mmigh.aternos.me",
-  "port": 48546,
+  "host": "194.164.125.5",
+  "port": 6390,
   "username": "nini",
   "reconnectDelayMs": 7000,
   "checkIntervalMs": 75000,

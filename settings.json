@@ -1,7 +1,7 @@
 {
   "platform": "bedrock",
-  "host": "194.164.125.5",
-  "port": 6390,
+  "host": "191.96.231.11",
+  "port": 31980,
   "username": "nini",
   "reconnectDelayMs": 7000,
   "checkIntervalMs": 75000,
